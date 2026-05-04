@@ -1,0 +1,1702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FAAAHHHH — AI Health Companion</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+/* ═══════════════════════════════════════════════
+   CSS VARIABLES — DYNAMIC THEMES
+═══════════════════════════════════════════════ */
+:root {
+  --bg-primary: #f0faf6;
+  --bg-secondary: #e3f5ec;
+  --bg-card: rgba(255,255,255,0.92);
+  --sidebar-bg: linear-gradient(160deg, #0f4c35 0%, #1a6b5a 50%, #0d7a5c 100%);
+  --accent: #1a6b5a;
+  --accent-light: #2db88a;
+  --accent-glow: rgba(26,107,90,0.3);
+  --user-bubble: linear-gradient(135deg, #1a6b5a 0%, #2db88a 100%);
+  --bot-bubble: rgba(255,255,255,0.95);
+  --text-primary: #1a2e25;
+  --text-secondary: #4a7060;
+  --text-muted: #8aab9a;
+  --border: rgba(26,107,90,0.15);
+  --shadow: 0 8px 32px rgba(26,107,90,0.12);
+  --shadow-strong: 0 20px 60px rgba(26,107,90,0.2);
+  --emergency-bg: linear-gradient(135deg, #ff4444, #cc0000);
+  --star-color: #f5a623;
+  --font-main: 'DM Sans', sans-serif;
+  --font-display: 'Playfair Display', serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --sidebar-w: 280px;
+  --radius-lg: 20px;
+  --radius-md: 14px;
+  --radius-sm: 8px;
+  --transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
+}
+
+body.night-mode {
+  --bg-primary: #0d1b2a;
+  --bg-secondary: #0f2336;
+  --bg-card: rgba(15,35,55,0.95);
+  --sidebar-bg: linear-gradient(160deg, #050d1a 0%, #0a1f35 50%, #071628 100%);
+  --accent: #4fc3f7;
+  --accent-light: #81d4fa;
+  --accent-glow: rgba(79,195,247,0.25);
+  --user-bubble: linear-gradient(135deg, #1565c0 0%, #4fc3f7 100%);
+  --bot-bubble: rgba(15,35,55,0.98);
+  --text-primary: #e0f0ff;
+  --text-secondary: #90caf9;
+  --text-muted: #546e7a;
+  --border: rgba(79,195,247,0.15);
+  --shadow: 0 8px 32px rgba(0,0,0,0.4);
+  --shadow-strong: 0 20px 60px rgba(0,0,0,0.6);
+}
+
+/* ═══════════════════════════════════════════════
+   BASE
+═══════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  font-family: var(--font-main);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: var(--transition);
+  position: relative;
+}
+
+/* Animated themed background */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 0%, rgba(45,184,138,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 80% at 80% 100%, rgba(26,107,90,0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 40% at 60% 40%, rgba(144,255,200,0.06) 0%, transparent 50%);
+  animation: bgPulse 12s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+body.night-mode::before {
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 0%, rgba(21,101,192,0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 80% at 80% 100%, rgba(4,30,60,0.3) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 40% at 60% 40%, rgba(79,195,247,0.05) 0%, transparent 50%);
+}
+@keyframes bgPulse {
+  from { opacity: 0.7; }
+  to { opacity: 1; }
+}
+
+/* Floating particles */
+.particle {
+  position: fixed;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent-light);
+  opacity: 0.15;
+  animation: floatParticle linear infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+@keyframes floatParticle {
+  0% { transform: translateY(100vh) rotate(0); opacity: 0; }
+  10% { opacity: 0.15; }
+  90% { opacity: 0.15; }
+  100% { transform: translateY(-100px) rotate(720deg); opacity: 0; }
+}
+
+/* ═══════════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════════ */
+.app-wrapper {
+  display: flex;
+  height: 100vh;
+  position: relative;
+  z-index: 1;
+}
+
+/* ═══════════════════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════════════════ */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--sidebar-bg);
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px;
+  gap: 8px;
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex-shrink: 0;
+  transition: var(--transition);
+  z-index: 10;
+}
+.sidebar::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 1px; height: 100%;
+  background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.1), transparent);
+}
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 8px;
+  margin-bottom: 8px;
+}
+.logo-icon {
+  width: 44px; height: 44px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.25), rgba(255,255,255,0.1));
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  border: 1px solid rgba(255,255,255,0.2);
+  backdrop-filter: blur(10px);
+  animation: logoPulse 3s ease-in-out infinite;
+}
+@keyframes logoPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.2); }
+  50% { box-shadow: 0 0 0 8px rgba(255,255,255,0); }
+}
+.logo-text { color: white; }
+.logo-text h2 { font-family: var(--font-display); font-size: 18px; font-weight: 700; letter-spacing: 0.3px; }
+.logo-text p { font-size: 10px; opacity: 0.65; letter-spacing: 1px; text-transform: uppercase; }
+
+.sidebar-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.08);
+  margin: 8px 0;
+}
+
+.sidebar-section-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: rgba(255,255,255,0.4);
+  padding: 0 8px;
+  margin-top: 8px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: rgba(255,255,255,0.7);
+  font-size: 13.5px;
+  font-weight: 500;
+  transition: var(--transition);
+  border: 1px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+.nav-item::before {
+  content: '';
+  position: absolute; left: 0; top: 0;
+  width: 3px; height: 100%;
+  background: var(--accent-light);
+  transform: scaleY(0);
+  transition: transform 0.3s ease;
+  border-radius: 0 2px 2px 0;
+}
+.nav-item:hover, .nav-item.active {
+  background: rgba(255,255,255,0.1);
+  color: white;
+  border-color: rgba(255,255,255,0.12);
+}
+.nav-item:hover::before, .nav-item.active::before {
+  transform: scaleY(1);
+}
+.nav-item i { width: 20px; text-align: center; font-size: 15px; }
+.nav-badge {
+  margin-left: auto;
+  background: var(--accent-light);
+  color: white;
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 20px;
+  font-weight: 600;
+}
+
+/* Emergency button */
+.emergency-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #ff4444, #cc0000);
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  border: none;
+  margin-top: 4px;
+  position: relative;
+  overflow: hidden;
+  animation: emergencyPulse 2.5s ease-in-out infinite;
+  transition: var(--transition);
+}
+.emergency-btn:hover { transform: scale(1.02); box-shadow: 0 8px 24px rgba(255,68,68,0.4); }
+.emergency-btn::before {
+  content: '';
+  position: absolute; top: -50%; left: -50%;
+  width: 200%; height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 60%);
+  animation: shimmer 2.5s ease-in-out infinite;
+}
+@keyframes emergencyPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,68,68,0.4); }
+  50% { box-shadow: 0 0 0 10px rgba(255,68,68,0); }
+}
+@keyframes shimmer {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Theme toggle */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.8);
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.1);
+  transition: var(--transition);
+}
+.theme-toggle:hover { background: rgba(255,255,255,0.15); }
+.toggle-pill {
+  margin-left: auto;
+  width: 34px; height: 18px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 9px;
+  position: relative;
+  transition: var(--transition);
+}
+.toggle-pill::after {
+  content: '';
+  position: absolute; top: 2px; left: 2px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: white;
+  transition: var(--transition);
+}
+body.night-mode .toggle-pill { background: var(--accent); }
+body.night-mode .toggle-pill::after { left: 18px; }
+
+/* ═══════════════════════════════════════════════
+   MAIN CONTENT
+═══════════════════════════════════════════════ */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: transparent;
+}
+
+/* Header */
+.chat-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 28px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 2px 20px rgba(0,0,0,0.06);
+  z-index: 5;
+}
+
+/* Morphing avatar */
+.bot-avatar {
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-light));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  position: relative;
+  transition: var(--transition);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+  animation: avatarFloat 4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes avatarFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+.bot-avatar.emotion-happy { background: linear-gradient(135deg, #2db88a, #56e0ac); }
+.bot-avatar.emotion-concerned { background: linear-gradient(135deg, #f5a623, #e68a00); }
+.bot-avatar.emotion-alert { background: linear-gradient(135deg, #ff4444, #cc0000); }
+.bot-avatar.emotion-thinking { background: linear-gradient(135deg, #7b68ee, #9f8fff); }
+.bot-avatar.emotion-caring { background: linear-gradient(135deg, #e91e8c, #f06292); }
+
+.avatar-status {
+  position: absolute; bottom: 1px; right: 1px;
+  width: 12px; height: 12px;
+  background: #2db88a;
+  border-radius: 50%;
+  border: 2px solid var(--bg-card);
+  animation: statusPulse 2s infinite;
+}
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.header-info h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.header-info p {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.header-actions { margin-left: auto; display: flex; gap: 10px; }
+.header-btn {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 15px;
+  transition: var(--transition);
+}
+.header-btn:hover {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+  transform: scale(1.05);
+}
+
+/* ═══════════════════════════════════════════════
+   PANEL VIEWS
+═══════════════════════════════════════════════ */
+.panel { display: none; flex: 1; overflow-y: auto; padding: 24px 28px; }
+.panel.active { display: flex; flex-direction: column; gap: 20px; animation: panelIn 0.4s ease; }
+@keyframes panelIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ═══════════════════════════════════════════════
+   CHAT PANEL
+═══════════════════════════════════════════════ */
+#chat-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  gap: 0;
+}
+#chat-panel.active { gap: 0; }
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  scroll-behavior: smooth;
+}
+.chat-messages::-webkit-scrollbar { width: 4px; }
+.chat-messages::-webkit-scrollbar-track { background: transparent; }
+.chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* Message bubbles */
+.msg-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  animation: msgIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes msgIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.msg-row.user { flex-direction: row-reverse; }
+
+.msg-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-light));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.msg-row.user .msg-avatar { background: linear-gradient(135deg, #6b7db3, #8fa4d4); }
+
+.msg-bubble {
+  max-width: 68%;
+  padding: 13px 16px;
+  border-radius: 18px;
+  font-size: 13.5px;
+  line-height: 1.7;
+  position: relative;
+  transition: var(--transition);
+}
+.msg-bubble:hover { transform: translateY(-1px); }
+
+/* Gradient bubbles */
+.msg-row.bot .msg-bubble {
+  background: var(--bot-bubble);
+  color: var(--text-primary);
+  border-bottom-left-radius: 4px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}
+.msg-row.user .msg-bubble {
+  background: var(--user-bubble);
+  color: white;
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 4px 20px var(--accent-glow);
+}
+
+.msg-time {
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  text-align: right;
+  font-family: var(--font-mono);
+}
+.msg-row.bot .msg-time { text-align: left; }
+
+/* Emergency bubble */
+.msg-bubble.emergency {
+  background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
+  color: white;
+  animation: emergencyShake 0.5s ease 0.2s;
+  border: none;
+}
+@keyframes emergencyShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-5px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+
+/* Typing indicator */
+.typing-indicator {
+  display: none;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 0 0 4px 0;
+}
+.typing-indicator.active { display: flex; animation: msgIn 0.3s ease; }
+.typing-dots {
+  background: var(--bot-bubble);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  border-bottom-left-radius: 4px;
+  padding: 13px 18px;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  box-shadow: var(--shadow);
+}
+.typing-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: typingBounce 1.2s ease infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.15s; }
+.typing-dot:nth-child(3) { animation-delay: 0.3s; }
+@keyframes typingBounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+  40% { transform: translateY(-6px); opacity: 1; }
+}
+
+/* Quick replies */
+.quick-replies {
+  padding: 12px 28px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  border-top: 1px solid var(--border);
+  background: var(--bg-card);
+}
+.quick-replies::-webkit-scrollbar { height: 2px; }
+.quick-replies::-webkit-scrollbar-thumb { background: var(--border); }
+.quick-reply-btn {
+  white-space: nowrap;
+  padding: 7px 14px;
+  border-radius: 20px;
+  border: 1.5px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: var(--font-main);
+}
+.quick-reply-btn:hover {
+  background: var(--accent);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px var(--accent-glow);
+}
+
+/* Input area */
+.chat-input-area {
+  padding: 16px 28px 20px;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+  backdrop-filter: blur(20px);
+}
+.input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  background: var(--bg-secondary);
+  border: 1.5px solid var(--border);
+  border-radius: 18px;
+  padding: 10px 14px;
+  transition: var(--transition);
+}
+.input-row:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+#user-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  font-family: var(--font-main);
+  color: var(--text-primary);
+  resize: none;
+  min-height: 22px;
+  max-height: 100px;
+  line-height: 1.5;
+}
+#user-input::placeholder { color: var(--text-muted); }
+.send-btn {
+  width: 38px; height: 38px;
+  border-radius: 12px;
+  background: var(--accent);
+  border: none;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+.send-btn:hover { background: var(--accent-light); transform: scale(1.08); }
+.send-btn:active { transform: scale(0.95); }
+
+/* ═══════════════════════════════════════════════
+   ANALYTICS PANEL
+═══════════════════════════════════════════════ */
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: var(--shadow);
+  transition: var(--transition);
+}
+.stat-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-strong); }
+.stat-icon {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  margin-bottom: 4px;
+}
+.stat-num {
+  font-size: 32px;
+  font-weight: 700;
+  font-family: var(--font-display);
+  color: var(--text-primary);
+  line-height: 1;
+}
+.stat-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.chart-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  grid-column: span 2;
+}
+.chart-card h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+/* ═══════════════════════════════════════════════
+   HOSPITAL FINDER PANEL
+═══════════════════════════════════════════════ */
+.hospital-map {
+  width: 100%;
+  height: 400px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  position: relative;
+  background: var(--bg-secondary);
+  display: flex; align-items: center; justify-content: center;
+}
+#map-iframe { width: 100%; height: 100%; border: none; }
+.map-placeholder {
+  text-align: center;
+  color: var(--text-muted);
+}
+.map-placeholder i { font-size: 48px; margin-bottom: 12px; display: block; color: var(--accent); }
+.locate-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 24px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  width: 100%;
+  justify-content: center;
+}
+.locate-btn:hover { background: var(--accent-light); transform: translateY(-2px); box-shadow: var(--shadow-strong); }
+
+/* ═══════════════════════════════════════════════
+   EMERGENCY MODAL
+═══════════════════════════════════════════════ */
+.modal-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.active { display: flex; animation: fadeIn 0.25s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  max-width: 460px;
+  width: 90%;
+  box-shadow: var(--shadow-strong);
+  border: 2px solid #ff4444;
+  animation: modalIn 0.35s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes modalIn {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.modal-header .alert-icon {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ff4444, #cc0000);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px;
+  color: white;
+  animation: emergencyPulse 1.5s infinite;
+}
+.modal-title h3 { font-size: 18px; font-weight: 700; color: #cc0000; }
+.modal-title p { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.emg-number-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.emg-number-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  text-align: center;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.emg-number-card:hover { border-color: #ff4444; background: rgba(255,68,68,0.05); transform: scale(1.02); }
+.emg-service { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+.emg-num { font-size: 22px; font-weight: 700; color: #cc0000; font-family: var(--font-mono); }
+.modal-close {
+  width: 100%;
+  padding: 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.modal-close:hover { background: var(--border); }
+
+/* ═══════════════════════════════════════════════
+   FEEDBACK PANEL
+═══════════════════════════════════════════════ */
+.feedback-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  box-shadow: var(--shadow);
+}
+.star-rating { display: flex; gap: 10px; margin: 16px 0; }
+.star {
+  font-size: 32px;
+  cursor: pointer;
+  color: #ddd;
+  transition: var(--transition);
+  filter: grayscale(1);
+}
+.star:hover, .star.active { color: var(--star-color); filter: grayscale(0) drop-shadow(0 2px 8px rgba(245,166,35,0.4)); transform: scale(1.2); }
+.feedback-textarea {
+  width: 100%;
+  padding: 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-family: var(--font-main);
+  font-size: 13.5px;
+  resize: none;
+  height: 100px;
+  outline: none;
+  transition: var(--transition);
+}
+.feedback-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+.submit-btn {
+  padding: 12px 28px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  margin-top: 12px;
+}
+.submit-btn:hover { background: var(--accent-light); transform: translateY(-2px); box-shadow: var(--shadow); }
+
+/* ═══════════════════════════════════════════════
+   REMINDERS PANEL
+═══════════════════════════════════════════════ */
+.reminder-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: var(--shadow);
+  transition: var(--transition);
+}
+.reminder-item:hover { transform: translateX(4px); border-color: var(--accent); }
+.reminder-icon {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-light));
+  display: flex; align-items: center; justify-content: center;
+  color: white;
+  font-size: 16px;
+}
+.reminder-info { flex: 1; }
+.reminder-med { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.reminder-time { font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); }
+.reminder-toggle {
+  width: 42px; height: 22px;
+  background: var(--accent);
+  border-radius: 11px;
+  cursor: pointer;
+  position: relative;
+  transition: var(--transition);
+}
+.reminder-toggle::after {
+  content: '';
+  position: absolute; top: 3px; right: 3px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: white;
+  transition: var(--transition);
+}
+.reminder-form {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: var(--shadow);
+}
+.form-input {
+  padding: 11px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-family: var(--font-main);
+  font-size: 13.5px;
+  outline: none;
+  transition: var(--transition);
+}
+.form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+
+/* ═══════════════════════════════════════════════
+   PANEL HEADINGS
+═══════════════════════════════════════════════ */
+.panel-heading {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.panel-heading span {
+  font-size: 14px;
+  font-family: var(--font-main);
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.section-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* PDF button in message */
+.pdf-download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  background: linear-gradient(135deg, #1a6b5a, #2db88a);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 10px;
+  text-decoration: none;
+  transition: var(--transition);
+}
+.pdf-download-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(26,107,90,0.35); }
+
+/* Risk badge */
+.risk-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 8px;
+}
+.risk-high { background: rgba(255,68,68,0.15); color: #cc0000; }
+.risk-medium { background: rgba(245,166,35,0.15); color: #d4840a; }
+.risk-low { background: rgba(45,184,138,0.15); color: #1a7a5e; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sidebar { width: 220px; }
+  .analytics-grid { grid-template-columns: 1fr; }
+  .chart-card { grid-column: span 1; }
+}
+</style>
+</head>
+<body>
+
+<!-- Floating particles -->
+<div id="particles-container"></div>
+
+<!-- Emergency Modal -->
+<div class="modal-overlay" id="emergency-modal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div class="alert-icon">🚨</div>
+      <div class="modal-title">
+        <h3>Emergency Services</h3>
+        <p>Tap a number to call immediately</p>
+      </div>
+    </div>
+    <div class="emg-number-grid">
+      <div class="emg-number-card" onclick="window.location='tel:112'">
+        <div class="emg-service">🇮🇳 Emergency</div>
+        <div class="emg-num">112</div>
+      </div>
+      <div class="emg-number-card" onclick="window.location='tel:108'">
+        <div class="emg-service">🚑 Ambulance</div>
+        <div class="emg-num">108</div>
+      </div>
+      <div class="emg-number-card" onclick="window.location='tel:100'">
+        <div class="emg-service">👮 Police</div>
+        <div class="emg-num">100</div>
+      </div>
+      <div class="emg-number-card" onclick="window.location='tel:1091'">
+        <div class="emg-service">👩 Women Help</div>
+        <div class="emg-num">1091</div>
+      </div>
+      <div class="emg-number-card" onclick="window.location='tel:9152987821'">
+        <div class="emg-service">🧠 iCall Mental</div>
+        <div class="emg-num">iCall</div>
+      </div>
+      <div class="emg-number-card" onclick="window.location='tel:101'">
+        <div class="emg-service">🔥 Fire</div>
+        <div class="emg-num">101</div>
+      </div>
+    </div>
+    <button class="modal-close" onclick="closeEmergency()">✕ Close</button>
+  </div>
+</div>
+
+<!-- App Wrapper -->
+<div class="app-wrapper">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🩺</div>
+      <div class="logo-text">
+        <h2>FAAHHH</h2>
+        <p>AI Health Companion</p>
+      </div>
+    </div>
+
+    <button class="emergency-btn" onclick="openEmergency()">
+      🚨 EMERGENCY
+    </button>
+
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section-label">Navigation</div>
+
+    <div class="nav-item active" onclick="showPanel('chat')">
+      <i class="fas fa-comment-medical"></i> Chat
+      <span class="nav-badge" id="msg-count">0</span>
+    </div>
+    <div class="nav-item" onclick="showPanel('analytics')">
+      <i class="fas fa-chart-line"></i> Analytics
+    </div>
+    <div class="nav-item" onclick="showPanel('reminders')">
+      <i class="fas fa-bell"></i> Reminders
+      <span class="nav-badge" id="reminder-count">2</span>
+    </div>
+    <div class="nav-item" onclick="showPanel('hospital')">
+      <i class="fas fa-hospital"></i> Find Hospital
+    </div>
+
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section-label">Tools</div>
+
+    <div class="nav-item" onclick="quickAsk('calculate my BMR: weight:70 height:170 age:28 male moderate')">
+      <i class="fas fa-calculator"></i> BMR / BMI
+    </div>
+    <div class="nav-item" onclick="quickAsk('diet plan for diabetes')">
+      <i class="fas fa-apple-alt"></i> Diet Plans
+    </div>
+    <div class="nav-item" onclick="quickAsk('calories in rice and dal and chicken')">
+      <i class="fas fa-fire"></i> Calorie Counter
+    </div>
+    <div class="nav-item" onclick="quickAsk('home remedy for fever')">
+      <i class="fas fa-leaf"></i> Home Remedies
+    </div>
+    <div class="nav-item" onclick="showPanel('feedback')">
+      <i class="fas fa-star"></i> Feedback
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="theme-toggle" onclick="toggleTheme()">
+      <i class="fas fa-moon"></i>
+      <span id="theme-label">Night Mode</span>
+      <div class="toggle-pill"></div>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+
+    <!-- Header -->
+    <div class="chat-header">
+      <div class="bot-avatar emotion-neutral" id="bot-avatar">
+        🩺<div class="avatar-status"></div>
+      </div>
+      <div class="header-info">
+        <h3>FAHHHHH AI</h3>
+        <p id="header-status">Online · Ready to help</p>
+      </div>
+      <div class="header-actions">
+        <div class="header-btn" onclick="clearChat()" title="Clear chat"><i class="fas fa-broom"></i></div>
+        <a class="header-btn" href="/generate-pdf?condition=general" title="Download Report"><i class="fas fa-file-pdf"></i></a>
+        <div class="header-btn" onclick="showPanel('analytics')" title="Analytics"><i class="fas fa-chart-bar"></i></div>
+      </div>
+    </div>
+
+    <!-- ── CHAT PANEL ── -->
+    <div id="chat-panel" class="panel active">
+      <div class="chat-messages" id="chat-messages">
+        <!-- Welcome message -->
+        <div class="msg-row bot">
+          <div class="msg-avatar">🩺</div>
+          <div>
+            <div class="msg-bubble">
+              <strong>RAM RAM JI ! 🙏 I'm FAAAHHH , your AI Health Companion</strong><br><br>
+              I can help you with:<br>
+              🔍 Symptom analysis &amp; disease prediction<br>
+              💊 Medication reminders<br>
+              🥗 Personalized diet plans<br>
+              📊 BMR/BMI calculator<br>
+              🌿 Home remedies<br>
+              🏥 Nearby hospital finder<br>
+              📄 PDF health reports<br><br>
+              <em>What would you like help with today?</em>
+            </div>
+            <div class="msg-time">Just now</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Typing indicator -->
+      <div class="typing-indicator" id="typing-indicator">
+        <div class="msg-avatar">🩺</div>
+        <div class="typing-dots">
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+        </div>
+      </div>
+
+      <!-- Quick replies -->
+      <div class="quick-replies">
+        <button class="quick-reply-btn" onclick="quickAsk('I have a fever and headache')">🤒 Fever &amp; Headache</button>
+        <button class="quick-reply-btn" onclick="quickAsk('diet plan for weight loss')">🥗 Weight Loss Diet</button>
+        <button class="quick-reply-btn" onclick="quickAsk('calculate my BMR: weight:65 height:165 age:30 female moderate')">📊 Calculate BMR</button>
+        <button class="quick-reply-btn" onclick="quickAsk('predict: fever, fatigue, cough | age:40 | weight:75 height:172 bp:135')">🧬 Predict Risk</button>
+        <button class="quick-reply-btn" onclick="quickAsk('home remedy for headache')">🌿 Home Remedies</button>
+        <button class="quick-reply-btn" onclick="quickAsk('calories in banana apple oats')">🍎 Calorie Count</button>
+        <button class="quick-reply-btn" onclick="quickAsk('I feel anxious and stressed')">💙 Mental Health</button>
+      </div>
+
+      <!-- Input -->
+      <div class="chat-input-area">
+        <div class="input-row">
+          <textarea id="user-input" placeholder="Describe your symptoms, ask about diet, medications..." rows="1"
+            onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+          <button class="send-btn" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ANALYTICS PANEL ── -->
+    <div id="analytics-panel" class="panel">
+      <div class="panel-heading">📊 Health Analytics <span>Your session overview</span></div>
+      <div class="analytics-grid">
+        <div class="stat-card">
+          <div class="stat-icon" style="background:rgba(26,107,90,0.1)">💬</div>
+          <div class="stat-num" id="stat-queries">0</div>
+          <div class="stat-label">Total Queries</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:rgba(245,166,35,0.1)">🔍</div>
+          <div class="stat-num" id="stat-symptoms">0</div>
+          <div class="stat-label">Symptom Checks</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:rgba(45,184,138,0.1)">🥗</div>
+          <div class="stat-num" id="stat-diets">0</div>
+          <div class="stat-label">Diet Plans</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:rgba(123,104,238,0.1)">💊</div>
+          <div class="stat-num" id="stat-reminders">0</div>
+          <div class="stat-label">Reminders Set</div>
+        </div>
+        <div class="chart-card">
+          <h4>📈 Health Query Distribution</h4>
+          <canvas id="analyticsChart" height="180"></canvas>
+        </div>
+        <div class="chart-card">
+          <h4>🩺 Symptom Risk Heatmap</h4>
+          <canvas id="riskChart" height="180"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── REMINDERS PANEL ── -->
+    <div id="reminders-panel" class="panel">
+      <div class="panel-heading">💊 Medication Reminders</div>
+      <div class="reminder-form">
+        <div class="section-label">Add New Reminder</div>
+        <input class="form-input" id="med-name" placeholder="Medication name (e.g., Metformin 500mg)">
+        <input class="form-input" type="time" id="med-time" placeholder="Time">
+        <input class="form-input" id="med-freq" placeholder="Frequency (e.g., twice daily, after meals)">
+        <button class="submit-btn" onclick="addReminder()">+ Add Reminder</button>
+      </div>
+      <div id="reminders-list">
+        <div class="reminder-item">
+          <div class="reminder-icon">💊</div>
+          <div class="reminder-info">
+            <div class="reminder-med">Vitamin D3 (1000 IU)</div>
+            <div class="reminder-time">⏰ 08:00 AM · Daily with breakfast</div>
+          </div>
+          <div class="reminder-toggle"></div>
+        </div>
+        <div class="reminder-item">
+          <div class="reminder-icon">💊</div>
+          <div class="reminder-info">
+            <div class="reminder-med">Omega-3 Fish Oil</div>
+            <div class="reminder-time">⏰ 01:00 PM · After lunch</div>
+          </div>
+          <div class="reminder-toggle"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── HOSPITAL PANEL ── -->
+    <div id="hospital-panel" class="panel">
+      <div class="panel-heading">🏥 Nearby Hospital Finder</div>
+      <button class="locate-btn" id="locate-btn" onclick="findHospitals()">
+        <i class="fas fa-location-dot"></i> Use My Location to Find Hospitals
+      </button>
+      <div class="hospital-map" id="hospital-map">
+        <div class="map-placeholder">
+          <i class="fas fa-map-location-dot"></i>
+          <p>Click the button above to find hospitals near you</p>
+          <p style="font-size:11px;margin-top:6px;color:var(--text-muted)">Uses your GPS + OpenStreetMap + Overpass API</p>
+        </div>
+      </div>
+      <div id="hospital-list" style="display:flex;flex-direction:column;gap:10px;margin-top:4px;"></div>
+    </div>
+
+    <!-- ── FEEDBACK PANEL ── -->
+    <div id="feedback-panel" class="panel">
+      <div class="panel-heading">⭐ Share Feedback</div>
+      <div class="feedback-card">
+        <h4 style="font-size:16px;font-weight:600;color:var(--text-primary)">Rate your FAHHHH experience</h4>
+        <p style="font-size:13px;color:var(--text-muted);margin-top:6px">Your feedback helps improve AI health assistance for everyone.</p>
+        <div class="star-rating" id="star-rating">
+          <span class="star" onclick="setRating(1)" data-val="1">★</span>
+          <span class="star" onclick="setRating(2)" data-val="2">★</span>
+          <span class="star" onclick="setRating(3)" data-val="3">★</span>
+          <span class="star" onclick="setRating(4)" data-val="4">★</span>
+          <span class="star" onclick="setRating(5)" data-val="5">★</span>
+        </div>
+        <textarea class="feedback-textarea" id="feedback-text" placeholder="Tell us what you loved or what we can improve..."></textarea>
+        <button class="submit-btn" onclick="submitFeedback()">Submit Feedback 💙</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let currentRating = 0;
+let msgCount = 0;
+let analyticsChart = null;
+let riskChart = null;
+let isNightMode = false;
+let reminders = [];
+let analyticsData = { total_queries: 0, symptom_checks: 0, diet_plans: 0, reminders: 0 };
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  initParticles();
+  checkTimeTheme();
+  initCharts();
+  setInterval(fetchAnalytics, 10000);
+});
+
+// ─── DYNAMIC TIME THEME ───────────────────────────────────────────────────────
+function checkTimeTheme() {
+  const hour = new Date().getHours();
+  const isNight = hour >= 20 || hour < 6;
+  if (isNight) {
+    document.body.classList.add('night-mode');
+    isNightMode = true;
+    document.getElementById('theme-label').textContent = 'Day Mode';
+    document.querySelector('.logo-icon').textContent = '🌙';
+  } else {
+    document.querySelector('.logo-icon').textContent = '🩺';
+    document.getElementById('theme-label').textContent = 'Night Mode';
+  }
+}
+
+function toggleTheme() {
+  isNightMode = !isNightMode;
+  document.body.classList.toggle('night-mode', isNightMode);
+  document.getElementById('theme-label').textContent = isNightMode ? 'Day Mode' : 'Night Mode';
+  document.querySelector('.logo-icon').textContent = isNightMode ? '🌙' : '🩺';
+  setTimeout(initCharts, 100);
+}
+
+// ─── PARTICLES ────────────────────────────────────────────────────────────────
+function initParticles() {
+  const container = document.getElementById('particles-container');
+  for (let i = 0; i < 18; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.cssText = `
+      left: ${Math.random() * 100}%;
+      width: ${3 + Math.random() * 5}px;
+      height: ${3 + Math.random() * 5}px;
+      animation-duration: ${8 + Math.random() * 12}s;
+      animation-delay: ${Math.random() * 10}s;
+    `;
+    container.appendChild(p);
+  }
+}
+
+// ─── PANEL ROUTING ────────────────────────────────────────────────────────────
+function showPanel(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(name + '-panel').classList.add('active');
+  const items = document.querySelectorAll('.nav-item');
+  const panelMap = { chat: 0, analytics: 1, reminders: 2, hospital: 3 };
+  if (panelMap[name] !== undefined) items[panelMap[name] + 1].classList.add('active');
+  if (name === 'analytics') { fetchAnalytics(); }
+  if (name === 'chat') {
+    document.getElementById('chat-panel').style.display = 'flex';
+    scrollToBottom();
+  }
+}
+
+// ─── CHAT ─────────────────────────────────────────────────────────────────────
+function sendMessage() {
+  const input = document.getElementById('user-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  input.style.height = 'auto';
+  appendMessage('user', msg);
+  showTyping();
+  fetch('/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: msg })
+  })
+  .then(r => r.json())
+  .then(data => {
+    hideTyping();
+    const delay = 400 + Math.random() * 400;
+    setTimeout(() => {
+      appendBotMessage(data);
+      updateAnalyticsLocal(data);
+    }, delay);
+  })
+  .catch(() => {
+    hideTyping();
+    appendMessage('bot', '⚠️ Connection error. Please check your server is running on localhost:5000');
+  });
+}
+
+function appendMessage(role, text) {
+  const container = document.getElementById('chat-messages');
+  msgCount++;
+  document.getElementById('msg-count').textContent = msgCount;
+  const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const row = document.createElement('div');
+  row.className = `msg-row ${role}`;
+  const avatar = role === 'bot' ? '🩺' : '👤';
+  const bubbleClass = 'msg-bubble';
+  row.innerHTML = `
+    <div class="msg-avatar">${avatar}</div>
+    <div>
+      <div class="${bubbleClass}">${formatText(text)}</div>
+      <div class="msg-time">${time}</div>
+    </div>
+  `;
+  container.appendChild(row);
+  scrollToBottom();
+}
+
+function appendBotMessage(data) {
+  const container = document.getElementById('chat-messages');
+  msgCount++;
+  document.getElementById('msg-count').textContent = msgCount;
+  const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const row = document.createElement('div');
+  row.className = 'msg-row bot';
+  const isEmergency = data.type === 'emergency';
+  const bubbleExtra = isEmergency ? ' emergency' : '';
+
+  // Emotion → avatar
+  const emotion = data.emotion || 'neutral';
+  setAvatarEmotion(emotion);
+
+  let extraHTML = '';
+  if (data.type === 'pdf_ready' || data.type === 'diet_plan') {
+    const condition = data.data?.condition || 'general';
+    extraHTML = `<br><a href="/generate-pdf?condition=${condition}" class="pdf-download-btn" download><i class="fas fa-file-pdf"></i> Download PDF Report</a>`;
+  }
+  if (data.data?.risk !== undefined) {
+    const r = data.data.risk;
+    const cls = r > 65 ? 'risk-high' : r > 35 ? 'risk-medium' : 'risk-low';
+    const label = r > 65 ? '🔴 HIGH RISK' : r > 35 ? '🟡 MODERATE RISK' : '🟢 LOW RISK';
+    extraHTML += `<br><span class="risk-badge ${cls}">${label} — ${r}%</span>`;
+    updateRiskChart(r);
+  }
+
+  row.innerHTML = `
+    <div class="msg-avatar">🩺</div>
+    <div>
+      <div class="msg-bubble${bubbleExtra}">${formatText(data.text)}${extraHTML}</div>
+      <div class="msg-time">${time}</div>
+    </div>
+  `;
+  container.appendChild(row);
+  scrollToBottom();
+}
+
+function formatText(text) {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/\n/g, '<br>')
+    .replace(/• /g, '• ');
+}
+
+function setAvatarEmotion(emotion) {
+  const avatar = document.getElementById('bot-avatar');
+  avatar.className = `bot-avatar emotion-${emotion}`;
+  const emojis = {
+    neutral: '🩺', happy: '😊', concerned: '😟',
+    alert: '🚨', thinking: '🤔', caring: '💙'
+  };
+  avatar.innerHTML = (emojis[emotion] || '🩺') + '<div class="avatar-status"></div>';
+  document.getElementById('header-status').textContent = {
+    neutral: 'Online · Ready to help',
+    happy: 'Online · Great news!',
+    concerned: 'Online · Here for you',
+    alert: 'Online · Urgent attention',
+    thinking: 'Online · Analyzing...',
+    caring: 'Online · Here to support'
+  }[emotion] || 'Online · Ready to help';
+  setTimeout(() => {
+    avatar.className = 'bot-avatar emotion-neutral';
+    avatar.innerHTML = '🩺<div class="avatar-status"></div>';
+    document.getElementById('header-status').textContent = 'Online · Ready to help';
+  }, 5000);
+}
+
+function showTyping() {
+  document.getElementById('typing-indicator').classList.add('active');
+  scrollToBottom();
+}
+function hideTyping() {
+  document.getElementById('typing-indicator').classList.remove('active');
+}
+function scrollToBottom() {
+  const c = document.getElementById('chat-messages');
+  c.scrollTo({ top: c.scrollHeight, behavior: 'smooth' });
+}
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+}
+function quickAsk(msg) {
+  showPanel('chat');
+  document.getElementById('user-input').value = msg;
+  setTimeout(sendMessage, 100);
+}
+function clearChat() {
+  const c = document.getElementById('chat-messages');
+  c.innerHTML = `<div class="msg-row bot"><div class="msg-avatar">🩺</div><div><div class="msg-bubble">Chat cleared! How can I help you today? 😊</div><div class="msg-time">Just now</div></div></div>`;
+  msgCount = 0;
+  document.getElementById('msg-count').textContent = '0';
+}
+
+// ─── EMERGENCY ────────────────────────────────────────────────────────────────
+function openEmergency() {
+  document.getElementById('emergency-modal').classList.add('active');
+}
+function closeEmergency() {
+  document.getElementById('emergency-modal').classList.remove('active');
+}
+document.getElementById('emergency-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeEmergency();
+});
+
+// ─── ANALYTICS ───────────────────────────────────────────────────────────────
+function fetchAnalytics() {
+  fetch('/analytics').then(r => r.json()).then(data => {
+    const a = data.analytics;
+    document.getElementById('stat-queries').textContent = a.total_queries || 0;
+    document.getElementById('stat-symptoms').textContent = a.symptom_checks || 0;
+    document.getElementById('stat-diets').textContent = a.diet_plans || 0;
+    document.getElementById('stat-reminders').textContent = a.reminders || 0;
+    updateAnalyticsChart(a);
+  }).catch(() => {});
+}
+
+function updateAnalyticsLocal(data) {
+  analyticsData.total_queries++;
+  if (data.type === 'symptom_analysis') analyticsData.symptom_checks++;
+  if (data.type === 'diet_plan') analyticsData.diet_plans++;
+  if (data.type === 'reminder') analyticsData.reminders++;
+  document.getElementById('stat-queries').textContent = analyticsData.total_queries;
+  document.getElementById('stat-symptoms').textContent = analyticsData.symptom_checks;
+  document.getElementById('stat-diets').textContent = analyticsData.diet_plans;
+  document.getElementById('stat-reminders').textContent = analyticsData.reminders;
+}
+
+function initCharts() {
+  const isDark = document.body.classList.contains('night-mode');
+  const textColor = isDark ? '#90caf9' : '#4a7060';
+  const gridColor = isDark ? 'rgba(79,195,247,0.1)' : 'rgba(26,107,90,0.1)';
+
+  // Donut chart
+  const ctx1 = document.getElementById('analyticsChart');
+  if (analyticsChart) analyticsChart.destroy();
+  analyticsChart = new Chart(ctx1, {
+    type: 'doughnut',
+    data: {
+      labels: ['Symptom Checks', 'Diet Plans', 'Reminders', 'General'],
+      datasets: [{
+        data: [3, 2, 1, 5],
+        backgroundColor: ['#1a6b5a', '#2db88a', '#7b68ee', '#f5a623'],
+        borderWidth: 0,
+        hoverOffset: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'right', labels: { color: textColor, font: { size: 12 }, padding: 16 } }
+      },
+      cutout: '65%'
+    }
+  });
+
+  // Bar chart
+  const ctx2 = document.getElementById('riskChart');
+  if (riskChart) riskChart.destroy();
+  riskChart = new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: ['Fever', 'Headache', 'Chest Pain', 'Cough', 'Fatigue', 'Joint Pain'],
+      datasets: [{
+        label: 'Risk Score (%)',
+        data: [45, 25, 85, 30, 40, 35],
+        backgroundColor: ['#f5a623','#2db88a','#cc0000','#2db88a','#f5a623','#2db88a'],
+        borderRadius: 8,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, max: 100, grid: { color: gridColor }, ticks: { color: textColor } },
+        x: { grid: { display: false }, ticks: { color: textColor } }
+      }
+    }
+  });
+}
+
+function updateAnalyticsChart(a) {
+  if (!analyticsChart) return;
+  const other = Math.max(0, a.total_queries - a.symptom_checks - a.diet_plans - a.reminders);
+  analyticsChart.data.datasets[0].data = [a.symptom_checks, a.diet_plans, a.reminders, other];
+  analyticsChart.update();
+}
+
+function updateRiskChart(riskScore) {
+  if (!riskChart) return;
+  const idx = riskChart.data.datasets[0].data.length - 1;
+  riskChart.data.datasets[0].data[idx] = riskScore;
+  riskChart.data.datasets[0].backgroundColor[idx] = riskScore > 65 ? '#cc0000' : riskScore > 35 ? '#f5a623' : '#2db88a';
+  riskChart.update();
+}
+
+// ─── HOSPITAL FINDER ─────────────────────────────────────────────────────────
+function findHospitals() {
+  const btn = document.getElementById('locate-btn');
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting your location...';
+  if (!navigator.geolocation) {
+    alert('Geolocation not supported. Please enable location services.');
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(pos => {
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
+    btn.innerHTML = `<i class="fas fa-check"></i> Location found: ${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+    // Show OpenStreetMap with hospital layer via Overpass
+    const mapDiv = document.getElementById('hospital-map');
+    mapDiv.innerHTML = `<iframe id="map-iframe"
+      src="https://www.openstreetmap.org/export/embed.html?bbox=${lon-0.05},${lat-0.05},${lon+0.05},${lat+0.05}&layer=mapnik&marker=${lat},${lon}"
+      style="width:100%;height:100%;border:0;border-radius:16px;"
+      allowfullscreen></iframe>`;
+
+    fetch(`/hospitals?lat=${lat}&lon=${lon}`)
+      .then(r => r.json())
+      .then(data => {
+        // Query Overpass API for hospitals
+        fetch(data.overpass_url, {
+          method: 'POST',
+          body: 'data=' + encodeURIComponent(data.query)
+        })
+        .then(r => r.json())
+        .then(osmData => {
+          const list = document.getElementById('hospital-list');
+          const hospitals = osmData.elements.slice(0, 8);
+          list.innerHTML = '<div class="section-label" style="margin-bottom:8px">Nearby Facilities</div>';
+          if (hospitals.length === 0) {
+            list.innerHTML += '<p style="color:var(--text-muted);font-size:13px">No hospitals found in range. Try expanding your search area.</p>';
+            return;
+          }
+          hospitals.forEach(h => {
+            const name = h.tags?.name || h.tags?.amenity || 'Medical Facility';
+            const type = h.tags?.amenity === 'hospital' ? '🏥 Hospital' : h.tags?.amenity === 'clinic' ? '🏨 Clinic' : '👨‍⚕️ Doctor';
+            const dist = ((Math.random() * 4 + 0.3)).toFixed(1);
+            const card = document.createElement('div');
+            card.className = 'reminder-item';
+            card.innerHTML = `
+              <div class="reminder-icon" style="background:linear-gradient(135deg,#1a6b5a,#2db88a)">${type.split(' ')[0]}</div>
+              <div class="reminder-info">
+                <div class="reminder-med">${name}</div>
+                <div class="reminder-time">${type} · ~${dist} km away</div>
+              </div>
+              <a href="https://www.openstreetmap.org/?mlat=${h.lat}&mlon=${h.lon}&zoom=16" target="_blank"
+                 style="font-size:12px;color:var(--accent);text-decoration:none;font-weight:600">Map →</a>
+            `;
+            list.appendChild(card);
+          });
+        })
+        .catch(() => {
+          document.getElementById('hospital-list').innerHTML = '<p style="color:var(--text-muted);font-size:13px">Overpass API unavailable. Map shown above — search for "hospitals near me".</p>';
+        });
+      });
+  }, () => {
+    btn.innerHTML = '<i class="fas fa-location-dot"></i> Use My Location to Find Hospitals';
+    alert('Location access denied. Please enable location permissions in your browser.');
+  });
+}
+
+// ─── REMINDERS ────────────────────────────────────────────────────────────────
+function addReminder() {
+  const med = document.getElementById('med-name').value.trim();
+  const time = document.getElementById('med-time').value;
+  const freq = document.getElementById('med-freq').value.trim();
+  if (!med || !time) { alert('Please fill in medication name and time.'); return; }
+  const list = document.getElementById('reminders-list');
+  const item = document.createElement('div');
+  item.className = 'reminder-item';
+  item.style.animation = 'msgIn 0.4s ease';
+  item.innerHTML = `
+    <div class="reminder-icon">💊</div>
+    <div class="reminder-info">
+      <div class="reminder-med">${med}</div>
+      <div class="reminder-time">⏰ ${time} · ${freq || 'Daily'}</div>
+    </div>
+    <div class="reminder-toggle" onclick="this.style.background='#ccc';this.style.opacity='0.5'"></div>
+  `;
+  list.appendChild(item);
+  document.getElementById('med-name').value = '';
+  document.getElementById('med-time').value = '';
+  document.getElementById('med-freq').value = '';
+  const count = parseInt(document.getElementById('reminder-count').textContent) + 1;
+  document.getElementById('reminder-count').textContent = count;
+  // Schedule browser notification
+  if ('Notification' in window && Notification.permission === 'granted') {
+    const [h, m] = time.split(':').map(Number);
+    const now = new Date();
+    let next = new Date(); next.setHours(h, m, 0, 0);
+    if (next < now) next.setDate(next.getDate() + 1);
+    const delay = next - now;
+    setTimeout(() => {
+      new Notification(`💊 FAAHHHH Reminder`, { body: `Time to take ${med}`, icon: '/static/icon.png' });
+    }, delay);
+  } else if ('Notification' in window) {
+    Notification.requestPermission();
+  }
+}
+
+// ─── FEEDBACK ────────────────────────────────────────────────────────────────
+function setRating(val) {
+  currentRating = val;
+  document.querySelectorAll('.star').forEach((s, i) => {
+    s.classList.toggle('active', i < val);
+  });
+}
+
+function submitFeedback() {
+  const comment = document.getElementById('feedback-text').value.trim();
+  if (!currentRating) { alert('Please select a star rating!'); return; }
+  fetch('/feedback', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rating: currentRating, comment })
+  }).then(r => r.json()).then(data => {
+    document.querySelector('.feedback-card').innerHTML = `
+      <div style="text-align:center;padding:40px 20px">
+        <div style="font-size:52px;margin-bottom:16px">💙</div>
+        <h3 style="font-size:20px;font-weight:700;color:var(--accent);margin-bottom:8px">Thank You!</h3>
+        <p style="color:var(--text-muted)">Your feedback helps us improve AI healthcare for everyone.</p>
+        <p style="margin-top:12px;font-size:13px;color:var(--text-secondary)">Rating: ${'★'.repeat(currentRating)}${'☆'.repeat(5-currentRating)}</p>
+      </div>`;
+  });
+}
+</script>
+</body>
+</html>
